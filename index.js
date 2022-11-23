@@ -34,7 +34,7 @@ const streamToString = (stream) => new Promise((resolve, reject) => {
   stream.on('end', () => resolve(Buffer.concat(chunks)));
 });
 
-app.get('/:id', (req, res, next) => {
+app.get('/:id.*', (req, res, next) => {
   axios.get('https://api.digitalleman.com/v2/upload/files/' + req.params.id, {
     headers: {
       'authorization': `Bearer ${req.token}`
@@ -43,7 +43,7 @@ app.get('/:id', (req, res, next) => {
   .then((api) => {
     s3.send(new GetObjectCommand({
       Bucket: 'digitalleman',
-      Key: 'api/' + api.data.hash + api.data.ext
+      Key: 'private/' + api.data.hash + api.data.ext
     }))
     .then((data) => {
       res.set({
