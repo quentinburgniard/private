@@ -34,26 +34,31 @@ const streamToString = (stream) => new Promise((resolve, reject) => {
   stream.on('end', () => resolve(Buffer.concat(chunks)));
 });
 
-app.get('/:id.*', (req, res, next) => {
+app.get('/:id.:ext', (req, res, next) => {
   axios.get('https://api.digitalleman.com/v2/upload/files/' + req.params.id, {
     headers: {
       'authorization': `Bearer ${req.token}`
-    }
+    },
   })
   .then((api) => {
-    s3.send(new GetObjectCommand({
-      Bucket: 'digitalleman',
-      Key: 'private/' + api.data.hash + api.data.ext
-    }))
-    .then((data) => {
-      res.set({
-        'cache-control': 'max-age=3600',
-        'content-type': data.ContentType
+    if (`.${req.params.ext}` == api.data.ext) {
+      s3.send(new GetObjectCommand({
+        Bucket: 'digitalleman',
+        Key: 'private/' + api.data.hash + api.data.ext
+      }))
+      .then((data) => {
+        res.set({
+          'cache-control': 'max-age=3600',
+          'content-type': data.ContentType
+        });
+        streamToString(data.Body).then((data) => {
+          res.send(data);
+        });
       });
-      streamToString(data.Body).then((data) => {
-        res.send(data);
-      });
-    });
+    } else {
+      res.status(404);
+      res.send();
+    }
   })
   .catch(function (error) {
     res.status(error.response.status);
