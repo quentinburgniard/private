@@ -34,31 +34,26 @@ const streamToString = (stream) => new Promise((resolve, reject) => {
   stream.on('end', () => resolve(Buffer.concat(chunks)));
 });
 
-app.get('/:id.:ext', (req, res, next) => {
-  axios.get('https://api.digitalleman.com/v2/upload/files/' + req.params.id, {
+app.get('/:name', (req, res, next) => {
+  axios.get('https://api.digitalleman.com/v2/upload/files?filters[name]=' + req.params.name, {
     headers: {
       'authorization': `Bearer ${req.token}`
-    },
+    }
   })
   .then((api) => {
-    if (`.${req.params.ext}` == api.data.ext) {
-      s3.send(new GetObjectCommand({
-        Bucket: 'digitalleman',
-        Key: 'private/' + api.data.hash + api.data.ext
-      }))
-      .then((data) => {
-        res.set({
-          'cache-control': 'max-age=3600',
-          'content-type': data.ContentType
-        });
-        streamToString(data.Body).then((data) => {
-          res.send(data);
-        });
+    s3.send(new GetObjectCommand({
+      Bucket: 'digitalleman',
+      Key: 'private/' + api.data[0].hash + api.data[0].ext
+    }))
+    .then((data) => {
+      res.set({
+        'cache-control': 'max-age=3600',
+        'content-type': data.ContentType
       });
-    } else {
-      res.status(404);
-      res.send();
-    }
+      streamToString(data.Body).then((data) => {
+        res.send(data);
+      });
+    });
   })
   .catch(function (error) {
     res.status(error.response.status);
